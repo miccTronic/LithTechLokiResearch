@@ -1,0 +1,516 @@
+// Lithtech Jupiter EX Wld (FEAR 2)
+
+const uint FearVersion=126;
+
+void LTPad(const uint pos)
+{
+	if ((pos & 3)!=0) FSkip(4-(pos & 3));
+}
+
+struct LTVector
+{
+	float x, y, z;
+};
+
+struct LTQuaternion
+{
+	float x, y, z, w;
+};
+
+struct LTPlane
+{
+	LTVector normal;
+	float distance;
+};
+
+struct LTString
+{
+	ushort length;
+	char content[length];
+};
+
+struct CString
+{
+	char str[];
+};
+
+struct Header
+{
+	char magic[4];
+
+	if (magic!="WLDP")
+		Warning("File may not be a FEAR 2 world.");
+
+	uint version;
+
+	if (version!=FearVersion)
+		Warning("File may not be a valid FEAR 2 version.");
+
+	LTVector vec[5]; // maybe part of BSP section?
+} header <bgcolor=cLtGray>;
+
+struct WorldModelsSection
+{
+	uint node_count;
+	byte subdivision_flags[Ceil((float)node_count/8)] <format=binary>;
+	
+	uint string_count;
+	uint string_length;
+	uint normal_count;
+	uint bsp_count;
+	uint unk_count;
+	uint unk_count;
+	uint unk_count;
+	uint unk_count;
+	
+	uint float_count;
+	float unk_floats[float_count];
+	
+	struct {
+		CString strings[string_count] <optimize=false>;
+	} string_container <bgcolor=cLtBlue>;
+
+	char pad[string_length-sizeof(string_container)] <hidden=true>;
+	
+	struct LTStringTable
+	{
+		struct {
+			uint a, b;
+		} entries[string_count];
+	} string_table;
+	
+	struct {
+		LTVector normals[normal_count];
+	} normals <bgcolor=cLtGreen>;
+
+	struct UnknownTable {
+		SetBackColor(cLtRed);
+		uint a;
+		short b, b;
+	};
+
+	struct LTFace(byte& tris) {
+		byte a, a; // inside, outside area index?
+		short b; // surface flags?
+		uint normal_index; //short c, c;
+		float plane_distance;
+		uint tri[tris];
+	};
+
+	struct {
+		struct Bsp
+		{
+			SetBackColor(cLtBlue);
+	
+            int iUnk1;
+            int point_count;
+            int poly_count;
+            int total_poly_point_count;
+            int node_count;
+			LTVector half_dims;
+            LTVector center;
+			byte tris[poly_count];	
+			struct {
+				local uint i=0;
+				for(i=0; i<poly_count; ++i) {
+					LTFace face(tris[i]);
+				}
+			} face_countainer;
+			UnknownTable world_nodes[node_count];
+			LTVector verts[point_count];
+		} bsp[bsp_count] <optimize=false>;
+	} bsp_container;
+
+
+struct LTPhysicsShapeMesh
+{
+	float mass, density;
+
+	LTVector buf__[4];
+
+	float unk[2];
+	uint point_count;
+	uint triangle_count;
+	LTVector points[point_count];
+
+	// triangulation ids into points[]
+	if (point_count<0x10000) // list of ushorts/uints if >= 0x10000
+		ushort ids[triangle_count];
+	else
+		uint ids[triangle_count];
+
+	float physics_props[4];
+
+	uint unknown_count;
+	byte unknown_array[unknown_count];
+};
+
+struct LTPhysicsShapeHull
+{
+	float mass, density;
+	LTVector vecs[4];
+	float unk, unk;
+	uint vertex_count;
+	uint plane_count;
+	LTVector vertices[vertex_count];
+	LTPlane planes[plane_count];
+};
+
+struct LTPhysicsShapeOBB
+{
+	float mass, density;
+	float unk; // dimensions + this = WorldEdit dimensions?
+	LTVector dimensions;
+};
+
+struct LTPhysicsShapeSphere
+{
+	float mass, density;
+	float radius;
+};
+
+struct LTPhysicsShapeCapsule
+{
+	float mass, density;
+	float radius;
+	LTVector vecs_[2]; // y = something to do with length?
+
+	local int check_id=ReadUInt(FTell()+(7*4));
+	switch(check_id)
+	{
+		case 2:
+			// ???
+			break;
+
+		case 3:
+			LTVector pos;
+			LTQuaternion rot;
+			uint id;
+			LTVector unk;
+			break;
+	}
+};
+
+	struct PhysicsShapesContainer
+	{
+		SetBackColor(cLtRed);
+
+		uint physics_shape_count;
+
+		struct PhysicsShape;
+		struct PhysicsShape
+		{
+			LTVector pos;
+			LTQuaternion rot;
+			enum <uint> PhysicsShapeType {
+				Null=0,
+				Mesh=1,
+				OBB=2,
+				Sphere=3,
+				Hull=4,
+				// ??? = 5,
+				SubShapes=6,
+				Capsule=7
+			} type;
+
+			switch(type)
+			{
+				case Null:
+					// intentionally empty
+					break;
+
+				case SubShapes:
+					uint shape_count;
+
+					struct { // this algorithm is disgusting, and definitely not the intended method of reading
+						//if (type>0) {
+							uint five;
+							if (five==0)
+								FSkip(-4);
+							else if (five>0x10)
+								FSkip(-4);
+							if (five!=7)
+								PhysicsShape shape;
+							else
+								LTPhysicsShapeCapsule capsule_shape;
+						//}  else {
+						//	FSkip(-4*7-8);
+						//}
+					} subshapes[shape_count] <optimize=false>;
+					break;
+
+				case Sphere:
+					LTPhysicsShapeSphere sphere_shape;
+					break;
+
+				case OBB:
+					LTPhysicsShapeOBB obb_shape;
+					break;
+
+				case Hull:
+					LTPhysicsShapeHull hull_shape;
+					break;
+
+				case Mesh:
+					LTPhysicsShapeMesh mesh_shape;
+					break;
+
+				case Capsule:
+					LTPhysicsShapeCapsule capsule_shape;
+					break;
+
+				default:
+					Assert("Unknown physics shape");
+					break;
+			};
+		} physics_shapes[bsp_count] <optimize=false>;
+	} physics_shapes_container;
+
+
+} world_model_section;
+
+
+
+/*
+struct UnkSection
+{
+	uint section_size; // in bytes
+	//byte section_chunk[section_size];
+	struct {
+		byte block[512];
+	} unk_blocks[section_size/512];
+} unk_section <bgcolor=0xFF88FF>;
+*/
+
+struct PrefabNodeIndexToNameMap
+{
+    int prefabs_count;
+	int total_prefabnodes_count;
+    struct {
+        uint prefabNameHash;
+        int nodes_count;
+        uint prefabNodeNameHashes[nodes_count];
+    } entries[prefabs_count] <optimize=false>;
+} prefab_node_map <bgcolor=0xFF88FF>;
+
+
+struct BundleSection
+{
+	//uint unk; // 1
+	//ushort unk_, unk_;
+	uint str_length;
+	ushort sUnk, sUnk; // 1 = 800
+	ushort sUnk, sUnk; // 3 = 2400
+    // NOTE: This following count is sometimes smaller than the mesh count! So assign by file name.
+	uint meshes_count_approx;
+	uint string_count_approx;
+	uint aratana_count;
+	uint unk;
+	uint unk;
+	uint node_count;
+	uint unk;
+	uint unk;
+	uint unk; // 1
+
+	local uint str_start=FTell();
+
+	char str_dat[str_length];
+
+	FSeek(str_start);
+	struct {
+		local uint i=0;
+		local uint temp_pad=0;
+		for(i=0; i<3000; ++i) // 1626 = m03, 1769 = m10?
+		{
+			CString str_test;
+
+			temp_pad=sizeof(str_test) & 3;
+			if (temp_pad!=0) struct { byte buf[4-temp_pad]; } pad <hidden=true>;
+		}
+	} strings;
+
+	FSeek(str_start+str_length);
+
+    // Define string offsets into the previous table, but only for some
+	struct {
+		uint unk;
+		uint count;
+		uint offset[count];
+	} str_offsets_table;
+    
+    // Probably lists the required bundle files per worldmesh
+	struct {
+        // These are offsets into the string table
+        int nameOffset;
+        int activateMsgOffset;
+        int deactivateMsgOffset;
+        int soundOffset;
+		uint type_id; // 104857600, 78643200		
+		int renderNodesCount;
+		int renderNodes[renderNodesCount]; // Probably references to render nodes
+		int files_count;
+		int fileNameOffsets[files_count];
+	} mesh_assets_list[meshes_count_approx] <optimize=false>;
+
+	/*struct {
+		uint unk;
+		struct {
+			uint count;
+			uint idx[count];
+		} entries[8] <optimize=false>;
+	} contain;*/
+
+	struct {
+		struct { // (sector) portals?
+			int i;
+			int i;
+			int count;
+			LTPlane planes[count];
+		
+			struct {
+				int count;
+				LTVector vecs[count];
+			} faces[count] <optimize=false>;
+		} aratana_section[aratana_count] <optimize=false, bgcolor=0x22FF88>;
+	} aratana_container;
+
+	struct {
+		struct Node
+		{
+			int count;
+			int maybe_render_nodes[count]; // refs to aratana or RenderNodes?
+			int flags; // maybe?
+			float unk; // radius or distance?
+			int next, next; // -1 = end of chain
+		} nodes[node_count] <optimize=false>;
+	} sector_node_container;
+
+} bundle_section;
+
+struct {
+    // This may be the meshes count in some files, but not always
+    int count;
+    struct {
+        LTPlane plane;
+        int count2;
+        LTVector vectors[count2];
+    } mesh_info[count] <optimize=false, fgcolor=cDkAqua>;
+} some_mesh_info;
+
+// Embedded Server Data?
+struct EmbeddedDataSection
+{
+	int count, data_size;
+	local uint pos_save=FTell();
+	FSkip(data_size);
+
+	struct {
+		uint size;
+		enum <uint> {
+			KeyframerId=1789855876,
+			AiNavMeshId=2213837873,
+			Dat2693Id=2693,
+			// FEAR 2
+			Dat1413762391=1413762391,
+		} type_id; //short unk, unk;
+		uint offset;
+	} entries[count];
+    
+	local uint pos_end=FTell();
+
+	struct {
+		local uint i=0;
+        local int count_keyframers = 0;
+        local int count_Dat2693 = 0;
+        local int count_Dat1413762391 = 0;
+		for(i=0; i<count; i++) {
+			FSeek(pos_save+entries[i].offset);
+
+			switch(entries[i].type_id)
+			{
+				case KeyframerId:
+                    count_keyframers++;
+					break;
+				case Dat2693Id:
+                    count_Dat2693++;
+					break;
+				case Dat1413762391:
+                    count_Dat1413762391++;
+					break;
+			}
+
+
+			switch(entries[i].type_id)
+			{
+				case KeyframerId:
+					struct Keyframer { // probably Keyframer?
+                        local int block_size_check = entries[i].size;
+						int a, b;
+                        int num_frames;
+						int frames_size; // in bytes
+						struct Frame {
+							float time;
+                            LTVector position;
+							short sUnk1, sUnk2, sUnk3; // compressed rotation?
+                            short str_idx;
+						} frames[num_frames];		
+						// if there's any non -1 str_idx then there's command strings here!
+					} blocks;
+					break;
+
+				// case AiNavMeshId:
+
+				case Dat2693Id:
+					struct Dat2693 {
+                        local int block_size_check = entries[i].size;
+						uint count;
+                        //if (count==0) uint unk;
+						LTVector vecs[3];
+						struct {
+							uint count;
+							float floats[count*5+9];
+						} unk[count] <optimize=false>;
+					} block;
+					break;
+
+                /*
+				case Dat1413762391:
+					struct Dat1413762391 {
+                        local int block_size_check = entries[i].size;
+						uint a;
+						uint b;
+						uint str_length;
+						char strings[str_length];
+
+						struct {
+							uint string_index;
+							short d, d;
+							uint c;
+
+							struct {
+								LTVector vec;
+								// maybe compressed quat?
+								int a;
+								short b, b;
+								int a;
+							} eohatuns[d[0]+d[1]];
+						} odun[b] <optimize=false>;
+
+					} unk_block;
+					break;
+                */
+
+				default:
+                    struct Undef {
+                        byte undefined_entry[entries[i].size];
+                    } undef;
+                    break;
+			}
+	
+			//struct { byte pad[data_table.entries[i].size-sizeof(blocks)]; } buf <hidden=true>;
+		}
+        
+    	FSeek(pos_end);
+	} data_container;
+
+} embedded_data_section <bgcolor=0x8822FF>;

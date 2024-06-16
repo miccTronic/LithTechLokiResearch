@@ -1,0 +1,166 @@
+struct LTString
+{
+	ushort length;
+	char content[length];
+};
+struct LTVector
+{
+	float x, y, z;
+};
+struct LTQuaternion
+{
+	float x, y, z, w;
+};
+struct LTPosRot
+{
+	LTVector pos;
+    LTQuaternion rot;
+};
+struct LTBBox
+{
+	LTVector min, max;
+};
+struct LTPlane
+{
+	LTVector normal;
+	float distance;
+};
+
+char magic[4];
+int version;
+int bsp_count; // == # of faces in tree (?)
+int RenderNodeCount; // OK
+int totalSurfaceCount; // OK
+//int totalRenderMeshCount;
+int instancesCount; // OK
+int instancesCountB; // OK
+int meshSurfaceCount;
+int renderMeshCount; // OK
+int unkCount1;
+int totalSupportBoxesCount; // OK
+int surfaceCount;
+
+struct ExternalMesh {
+    int iUnk1; Assert(iUnk1 == 1);
+    int materialsCount;
+    LTString meshFileName <fgcolor=cGreen>;
+    int zero; Assert(zero == 0);
+    LTString materials[materialsCount] <optimize=false, fgcolor=cDkGreen>;
+    //int materialCount;
+    //int vertexDataSize;
+} external_meshes[renderMeshCount] <optimize=false>;
+
+struct ModelInstance {
+    LTBBox bounds <fgcolor=cGray>;
+    LTPosRot pos_rot <fgcolor=cGray>;
+    int flag1, flag2, flag3;
+    LTString instFileName <fgcolor=cBlue>;
+    //float f1[3] <fgcolor=cDkYellow>;
+} global_instances[instancesCount] <optimize=false>;
+
+struct RenderNode {
+    int numFaces <fgcolor=cRed>;
+    int numBoxes;    
+    int numInstances;
+    int idxMesh;
+    struct RenderNodeFace {
+        LTBBox bounds;
+        int shadowFlags, idxFace;
+    } faces[numFaces] <optimize=false, fgcolor=cAqua>;
+    struct RenderNodeBox {
+        byte count;
+        LTVector vec[count];
+    } boxes[numBoxes] <optimize=false, fgcolor=cWhite>; 
+    int global_instances[numInstances];  
+} render_nodes[RenderNodeCount] <optimize=false, bgcolor=cLtBlue>;
+
+
+local int wm_placements_count, wm_type0_count, wm_type1_count;
+struct WorldModelType0 {
+    // Type 0 appears to be a reference to one or more faces in the
+    // global mesh OR a "NULL" reference (mesh index < 0)
+    int meshIndex_maybe; // sometimes -1 to indicate a NULL reference
+    int faceIndex;
+    int faceCount;
+    byte flags[4]; // unclear
+};
+struct WorldModelType1 {
+    // Type 1 appears to be a reference to a single "node" in the
+    // render tree of a prefab, referenced by file name here.
+    int instNodeIndex;
+    LTString instName <fgcolor=cDkAqua>;
+};
+struct InstancePlacement {
+    // These can appear instead or in addition to type 0/1 in any number.
+    // They may also render parts of one or more prefabs.
+    // It's totally unclear what the position/rotiation here means.
+    // It is too small as absolute value, and does not make sense
+    // when added to the WorldModel position.
+    LTPosRot posrot <fgcolor=cDkYellow>;
+    int numInstanceRefs; // usually 1
+    struct {
+        int instUnk1; // unclear, often 0.
+        int instNodeIndex;
+        LTString instFile <fgcolor=cDkRed>;
+    } instances[numInstanceRefs] <optimize=false>;
+};  
+struct WorldModelInstancingInfo {
+    // There is exactly one of these infos per WorldModel.
+    // Use the WorldModel's position and rotation when placing faces.
+    int type <fgcolor=cRed, bgcolor=cLtGray>;
+    Assert(type == 0 || type == 1);
+    if (type == 0) {
+        WorldModelType0 type0 <optimize=false, bgcolor=cLtYellow>;
+        wm_type0_count++;
+    } else if (type == 1) {
+        WorldModelType1 type1 <optimize=false, bgcolor=cLtPurple>;
+        wm_type1_count++;
+    }
+    int numPositions;
+    InstancePlacement posrots[numPositions] <optimize=false>;
+    wm_placements_count += numPositions;
+} wm_instance_data[bsp_count] <optimize=false>;
+
+
+struct SectorSection
+{
+	uint sector_count;
+	uint portal_count;
+	uint node_count;
+	uint unk[4];
+
+	struct Portal
+	{
+		int vec_count;
+		LTVector vecs[vec_count];
+		LTPlane plane;
+		LTVector vec2;
+		float f;
+	} portals[portal_count] <optimize=false>;
+
+	struct Sector // Sector?
+	{
+        float fUnk;
+		LTBBox bounds;
+
+		int portal_count;
+        int unk_count;
+        int iUnk2;
+        int iUnk3;
+        int numPlanes;
+        LTPlane planes[numPlanes];
+		int unk_ids[unk_count];
+		int portal_ids[portal_count];
+	} sectors[sector_count] <optimize=false>;
+
+	struct SectorNode // Tree Nodes?
+	{
+		uint count;
+		uint sector_ids[count];
+
+		int sector_index_1;
+		int sector_index_2;
+		int next_sector_index_1;
+		int next_sector_index_2;
+	} sector_nodes[node_count] <optimize=false>;
+} sector_section <bgcolor=cLtBlue>;

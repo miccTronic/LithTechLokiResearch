@@ -1,0 +1,100 @@
+struct LTString
+{
+	ushort length;
+	char content[length];
+};
+struct LTVector
+{
+	float x, y, z;
+};
+struct LTQuaternion
+{
+	float x, y, z, w;
+};
+
+char magic[4]; // PRFB
+int version;
+uint prefabId;
+int renderNodesCount;
+int facesCount;
+int materialCount;
+int material_block_size;
+int vertexTypeCount;
+int iGlobalUnk4;
+int vertex_and_triangle_block_size; // combined size?
+int facesCount_repeat;
+int vertex_block_size;
+int triangles_block_size;
+
+float vertex_block[vertex_block_size/4] <bgcolor=cLtBlue>;
+ushort triangles_block[triangles_block_size/2] <bgcolor=cLtPurple>;
+
+int vertexTypeCountRepeated;
+Assert(vertexTypeCount == vertexTypeCountRepeated);
+struct MaterialVertexDefinition
+{
+	uint size; // in bytes
+
+	struct PackType
+	{
+        byte a;
+		enum <byte> VertexDefType {
+			Vector2=1,
+			Vector3=2,
+			Vector4=3,
+			RGBA=4,
+			SkeletalIndex=5, // either float or int, depending on shader defs
+            UnknownLokiType=8, // 4 bytes
+			Exit=17
+		} type;
+		enum <byte> VertexDefLocation{
+			Position=0,
+			Normal=1,
+			Tangents=2,
+			BiNormal=3,
+            TexCoord=4,
+            Color=5
+		} usage;
+        byte index;
+        Assert(a == 0);
+	} pack_types[size] <optimize=false>;
+} vertex_defs[vertexTypeCount] <optimize=false, bgcolor=cLtGreen>;
+
+//byte dummy[96];
+int facesCountRepeated;
+Assert(facesCount == facesCountRepeated);
+
+struct Face
+{
+    // This is only a RELATIVE offset.
+    // Read vertices consecutively, but be sure to align the position
+    // to the vertex size before reading.
+	uint vertices_offset;
+	uint vertices_count;
+	//uint vertex_size; // in bytes
+
+	uint indices_start;
+	uint indices_offset; // vertices[tri_index - (vertices_start - indices_offset)]
+	uint indices_count;
+	
+	uint material_id;
+	uint unk1;
+	uint unk2;
+	uint vertexType;
+    Assert(vertexType < vertexTypeCount);
+} faces[facesCount] <optimize=false, bgcolor=cLtYellow>;
+
+char materials[material_block_size] <bgcolor=cLtAqua>;
+
+// Not sure what for, but this indexes the faces table.
+// It is referenced by the instances in the WorldModel.
+struct {
+    uint nodeId;
+    int offset; // into "faces"
+    int count;
+    byte flags[4];
+    Assert(flags[0] == 0 || flags[0] == 1);
+    Assert(flags[1] == 0 || flags[1] == 1 || flags[1] == 2);
+    Assert(flags[2] == 0 || flags[2] == 1 || flags[2] == 2);
+    Assert(flags[3] == 0 || flags[3] == 1 || flags[3] == 2);
+} render_tree[renderNodesCount] <optimize=false, bgcolor=cLtRed>;

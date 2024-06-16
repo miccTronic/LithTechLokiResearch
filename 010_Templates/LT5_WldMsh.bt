@@ -1,0 +1,219 @@
+struct LTString
+{
+	ushort length;
+	char content[length];
+};
+struct LTVector
+{
+	float x, y, z;
+};
+struct LTQuaternion
+{
+	float x, y, z, w;
+};
+struct LTPosRot
+{
+	LTVector pos;
+    LTQuaternion rot;
+};
+struct LTBBox
+{
+	LTVector min, max;
+};
+struct LTPlane
+{
+	LTVector normal;
+	float distance;
+};
+
+char magic[4];
+int version;
+int iGlobalUnk1;
+int facesCount;
+int vertexTypeCount;
+int iGlobalUnk4;
+int iGlobalUnk5;
+int surfaceCount_maybe;
+int materialCount_maybe;
+int vertex_block_size;
+int triangles_block_size;
+
+float vertex_block[vertex_block_size/4] <bgcolor=cLtBlue>;
+ushort triangles_block[triangles_block_size/2] <bgcolor=cLtPurple>;
+
+int vertexTypeCountRepeated;
+Assert(vertexTypeCount == vertexTypeCountRepeated);
+struct MaterialVertexDefinition
+{
+	uint size; // in bytes
+
+	struct PackType
+	{
+        byte a;
+		enum <byte> VertexDefType {
+			Vector2=1,
+			Vector3=2,
+			Vector4=3,
+			RGBA=4,
+			SkeletalIndex=5, // either float or int, depending on shader defs
+            CompressedVector2=8, // 2x short, used for some texcoords
+			Exit=17
+		} type;
+		enum <byte> VertexDefLocation{
+			Position=0,
+			Normal=1,
+			Tangents=2,
+			BiNormal=3,
+            TexCoord=4,
+            Color=5
+		} usage;
+        byte index;
+        Assert(a == 0);
+	} pack_types[size] <optimize=false>;
+} vertex_defs[vertexTypeCount] <optimize=false, bgcolor=cLtGreen>;
+
+//byte dummy[96];
+int facesCountRepeated;
+Assert(facesCount == facesCountRepeated);
+
+struct Face
+{
+    // This is only a RELATIVE offset.
+    // Read vertices consecutively, but be sure to align the position
+    // to the vertex size before reading.
+	uint vertices_offset;
+	uint vertices_count;
+	//uint vertex_size; // in bytes
+
+	uint indices_start;
+	uint indices_offset; // vertices[tri_index - (vertices_start - indices_offset)]
+	uint indices_count;
+	
+	uint material_id;
+	uint unk1; Assert(unk1 == 0);
+	uint unk2; Assert(unk2 == 0);
+	uint vertexType;
+    Assert(vertexType < vertexTypeCount);
+} faces[facesCount] <optimize=false, bgcolor=cLtYellow>;
+
+
+/*
+struct ExternalMesh {
+    int iUnk1; Assert(iUnk1 == 1);
+    int materialsCount;
+    LTString meshFileName <fgcolor=cGreen>;
+    int zero; Assert(zero == 0);
+    LTString materials[materialsCount] <optimize=false, fgcolor=cDkGreen>;
+    //int materialCount;
+    //int vertexDataSize;
+} external_mesh[renderMeshCount] <optimize=false>;
+
+struct ModelInstance {
+    float floats[13] <fgcolor=cGray>;
+    int iUnk1;
+    int iUnk2;
+    int iUnk3;
+    LTString instFileName <fgcolor=cBlue>;
+    //float f1[3] <fgcolor=cDkYellow>;
+} instances[instancesCount] <optimize=false>;
+
+struct RenderNode {
+    int numFaces <fgcolor=cRed>;
+    int numBoxes <fgcolor=cRed>;
+    local int firstMesh = -1;
+    
+    struct RenderNodeFace {
+        int idxMesh_maybe, idxFace_maybe;
+        LTBBox bounds;
+        if (firstMesh < 0) firstMesh = idxMesh_maybe;
+    } faces[numFaces] <optimize=false, fgcolor=cAqua>;
+    firstMesh = Max(0, firstMesh);
+    
+    int unk1; // Assert(unk1 == 0);
+    int unk2;
+    
+    struct RenderNodeBox {
+        byte count;
+        LTVector vec[count];
+    } boxes[numBoxes] <optimize=false, fgcolor=cWhite>;
+    
+    int gaps[firstMesh];  
+} render_tree[RenderNodeCount] <optimize=false, bgcolor=cLtBlue>;
+
+
+struct InstancePlacement {
+    LTPosRot posrot <fgcolor=cDkYellow>;
+    int numInstanceRefs;
+    struct {
+        int instUnk1;
+        int instIndex;
+        LTString instFile <fgcolor=cDkRed>;
+    } instances[numInstanceRefs] <optimize=false>;
+};  
+struct WorldModelType0 {
+    int unk1_or_minus1; // sometimes -1
+    int someIndexOr0;
+    int unk2;
+    byte unk3[4];
+};
+struct WorldModelType1 {
+    int instIndex;
+    LTString instName <fgcolor=cDkAqua>;
+};
+struct WorldModelInfo {
+    int type <fgcolor=cRed, bgcolor=cLtGray>;
+    Assert(type == 0 || type == 1);
+    if (type == 0) {
+        WorldModelType0 type0 <optimize=false, bgcolor=cLtYellow>;
+    } else if (type == 1) {
+        WorldModelType1 type1 <optimize=false, bgcolor=cLtPurple>;
+    }
+    int numPositions;
+    InstancePlacement posrots[numPositions] <optimize=false>;  
+} world_models[bsp_count] <optimize=false>;
+
+
+struct SectorSection
+{
+	uint sector_count;
+	uint portal_count;
+	uint node_count;
+	uint unk[4];
+
+	struct Portal
+	{
+		int vec_count;
+		LTVector b[vec_count];
+		LTPlane c;
+		LTVector e;
+		float f;
+	} portals[portal_count] <optimize=false>;
+
+	struct Sector // Sector?
+	{
+        float fUnk;
+		LTBBox bounds;
+
+		int portal_count;
+        int unk_count;
+        int iUnk2;
+        int iUnk3;
+        int numPlanes;
+        LTPlane planes[numPlanes];
+		int unk_ids[unk_count];
+		int portal_ids[portal_count];
+	} sectors[sector_count] <optimize=false>;
+
+	struct SectorNode // Tree Nodes?
+	{
+		uint count;
+		uint sector_ids[count];
+
+		uint unk; // unknown, flags?
+		float unk_; // unknown
+
+		int next;
+		int next;
+	} sector_nodes[node_count] <optimize=false>;
+} sector_section <bgcolor=cLtBlue>;
+*/

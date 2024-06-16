@@ -1,0 +1,21 @@
+struct LTString
+{
+	ushort length;
+	char content[length];
+};
+struct LTVector
+{
+	float x, y, z;
+};
+
+char magic[4];
+int version;
+int numObjects;
+
+struct ObjectDef {
+    LTString type;
+    LTString name;
+    int idxObjectDb;
+    LTVector pos;
+    LTVector rot;
+} Objects[numObjects] <optimize=false>;

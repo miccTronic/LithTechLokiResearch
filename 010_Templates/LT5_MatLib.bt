@@ -1,0 +1,46 @@
+struct LTString
+{
+	ushort length;
+	char content[length];
+};
+
+char magic[4];
+int version;
+int count1;
+int materialCount;
+int count3;
+int count4;
+int proptable_offset; // + 32b header
+int assignments_offset;
+
+// before each filename is its parent offset as int24
+char stringtable[proptable_offset] <fgcolor=cDkRed>;
+// strings are 4-byte-aligned
+// before each entry is a size (short) and another value (short)
+char proptable[assignments_offset-proptable_offset] <fgcolor=cBlue>;
+
+local uint max5=0, min5=2146899171;
+struct {
+    int fileNameOffset;
+    int shaderNameOffset;
+    ushort something2;
+    ushort something3;
+    int propertyCount;
+    max5 = Max(max5, something2);
+    min5 = Min(min5, something2);
+    struct {
+        int propNameOffset;
+        union {
+            float floatVal;
+            int intVal_or_offset;
+        } value;
+    } properties[propertyCount] <optimize=false>;
+} materials[materialCount] <optimize=false, fgcolor=cDkGreen>;
+
+local int max1, max2;
+struct {
+    ushort v1;
+    ushort v2;
+    max1 = Max(max1, v1);
+    max2 = Max(max2, v2);
+} something[4252] <optimize=false, fgcolor=cDkAqua>;
