@@ -60,31 +60,6 @@ public class LithtechResourceImporter
 		// 2) Defined in a Prefab (sometimes called instance). This is used for some parts of the world, especially if it appears in multiple instances.
 		// 3) From a model file. This is mostly used for animated models like NPCs, and not handeled here.
 		// 4)* BSPs also define meshes, but those are only used for collision detection, not for rendering.
-
-		// There are also multiple ways the are linked into the rendering process & placed on the map, depending on the above type:
-		// - Faces are usually referred to by RenderNodes (which in turn are referred to by BSPs in non-unique way).
-		//   A series of faces in the *global* mesh (index 0) can also be referenced to directly by BSPs in the BSP render instances list (a type 0 ref).
-		// - Prefabs are partially placed via the global prefab list (usually their first render node only).
-		//   Parts of prefabs can also be placed via the BSP render instances list (type 1 ref) *or* a PrefabPlacement entry in the same list.
-		// - RenderNode faces use absolute positions, and the global prefab list has their own position and rotation specs.
-		//   All of the other seem to use relative coordinates (i.e. are placed at 0,0) and thus use the BSPs linked object's position and rotation for placement.
-		//   (PrefabPlacements also have pos/rot info, but it makes no sense yet.)
-		// - A few BSPs don't have a linked object, and they are also placed at (0,0), and for them it's not yet clear where to place them.
-		//
-		//   Examples on the first map in FEAR2 (m01_penthouse) include:
-		//   * The tower front glowing illumination (WM 107, type 0 instance ref to Face 140 and 11 more)
-		//   * The Valkyrie tower sign text "glow" (WM 108, type 1 prefab ref to "prefabs\e01\signs\valkyrietower.inst")
-		//   * A part of a curved walk in the corner of the map (WMs 892, 893, 894; type 0 instance refs to Faces 864+2, 883+1, 867 respectively)
-		//
-		//   These BSPs have no name and therefore no linked object. Usually they refer to faces in the global mesh (via BSP render instances list), also placed at (0,0).
-		//   There don't seem to be remaining objects that could give position to these objects, nor do the BSPs or faces before/after them in the order give any clues.
-		//   It has been checked manually if ANY objects/worldmodels would provide the correct position if the models were placed there, but none did.
-		//   You can verify that e.g. for the Valkyrie tower sign (see below), which is centered in its mesh, there is NO "object" on the map at those coordinates.
-		//   It would be possible that coordinates are assigned dynamically, but any command (message) in other objects would need to reference the targets via an
-		//   index, because they have no names, and such commands have not been found.
-		//   It seem unlikely that any other entities could provide position, like sectors or the streaming data section at the end of the .wld file.
-		//   Also most structures have been decoded, and even if there were others, it's not clear how they could link to the BSPs, as the BSP has no more fields that
-		//   could provide a link themselves to other entities.
 		// - Hint: Set UseInstanceTestMaterialsLT5 = true to visualize the different "special" sources.
 
 		//var pp = world.ReadPrefabFile("prefabs\\_global\\vehicles\\sedan_m01.inst");
