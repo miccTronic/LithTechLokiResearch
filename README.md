@@ -2,15 +2,13 @@
 
 This repo collects materials for researching the LithTech 5 engine, also called "Loki" since it was used in game F.E.A.R 2 which had that internal codename. It was also used in Condemned 2, which was not released for PC though.
 
+This material is research-level and work in progress. Included are 010 editor templates for some types of assets, which are useful for studying world (.wld) and other files directly. Other parts are code examples illustrating how to parse the files and render the world. Those should be treated as pseudo-code, as the will **not** compile directly. (They have been taken out of another project with too many dependencies to easily include here, but they should serve their purpose.)
+
 All materials are provided without warranty or liability, and imply no legal rights as to what they may or may not be used for, which is entirely the responsibility of their users.
 
 Credits go to Amphos, on whose work and exhaustive research into LithTech much of this is based and without which it would not have been possible: https://github.com/Five-Damned-Dollarz/io_scene_jupex
 
 Some other parts are based on https://github.com/burmaraider/JupiterEX_DatabaseExtractor (Game DB) and work done by Luigi Auriemma (QuickBMS) and people at the no-longer-existant XeNTaX forums (Archives, Bundles...). Thanks as well!
-
-## Contents
-
-This material is research-level. Parts are 010 editor templates, which are useful for studying world (.wld) and other files directly. Other parts are code show examples an how to parse the files and render the world. Those should be treated as pseudo-code, as the will **not** compile directly. (They have been taken out of another project with too many dependencies to easily include here, but they should serve their purpose.)
 
 ## Important Terms
 
@@ -32,21 +30,21 @@ This material is research-level. Parts are 010 editor templates, which are usefu
 
 ## Current Status
 
-It is possible to render the basic world meshes, with like 5-10% of the geomtry still at the wrong position (see below).
+It is possible to render the basic world meshes, with like 5-10% of the geometry still at the wrong position (see below).
 
-Some of the things that are not yet supported:
+Some other things that are not yet supported:
 
-- There may be a few instances which are "floating" or have otherwise off position assigned. This needs to be investigated.
-- Some prefabs and faces have multiple "versions" of the same face defined (e.g. broken and intact). Currently, they are all rendered as it's not clear how they are distinguished (probably via a set of flags that has not been researched well yet).
-- Rendering of external models (.mdl files) linked to objects.
+- There may be a few instances which are "floating" above where they should be or have otherwise a slightly off position assigned. This needs to be investigated, but it's far less serious than the BSPs without *any* position.
+- Some prefabs and faces have multiple "versions" of the same face defined (e.g. a vehicle that can be both intact and destroyed). Currently, all versions are rendered as it's not clear how they are distinguished (probably via a set of flags that has not been researched well yet).
+- Rendering of external models (.mdl files), including any skeletons and animations, is missing. These files would be linked to some WorldModels.
 - Animated materials (.txanim) are not parsed.
-- Lightmaps, probably implemented via cube maps / texture probes in LT5, are not considered for now.
+- Lightmaps, presumabely implemented via cube maps / texture probes in LT5, are not considered for now.
 
 ## Placement of instances without absolute coordinates
 
 This is the biggest obvious issue at the moment and is therefore again described separately here. It seems to apply mainly to "layered" materials (e.g. additive shaders, grime, light halos etc.).
 
-There are also multiple ways instances (see above) are linked into the rendering process & placed on the map, depending on their type:
+Generally, there are multiple ways instances (see above) are linked into the rendering process & placed on the map, depending on their type:
 - Faces are usually referred to by RenderNodes (which in turn are referred to by BSPs in non-unique way).
   A series of faces in the *global* mesh (index 0) can also be referenced to directly by BSPs in the BSP render instances list (a type 0 ref).
 - Prefabs are partially placed via the global prefab list (usually their first render node only).
@@ -54,7 +52,7 @@ There are also multiple ways instances (see above) are linked into the rendering
 - RenderNode faces use absolute positions, and the global prefab list has their own position and rotation specs.
   All of the other seem to use relative coordinates (i.e. are placed at 0,0) and thus use the BSPs linked object's position and rotation for placement.
   (PrefabPlacements also have pos/rot info, but it makes no sense yet.)
-- A few BSPs don't have a linked object, and they are also placed at (0,0), and for them it's not yet clear where to place them.
+- However, a few BSPs don't have a linked object, and they are also placed at (0,0), and for them it's not clear yet where to place them.
 
 Examples on the first map in FEAR2 (m01_penthouse) include:
 - The tower front glowing illumination (WM 107, type 0 instance ref to Face 140 and 11 more)
@@ -63,11 +61,11 @@ Examples on the first map in FEAR2 (m01_penthouse) include:
 
 Additional findings on that topic:
 - These BSPs have no name and therefore no linked object. Usually they refer to faces in the global mesh (via BSP render instances list), also placed at (0,0).
-- There don't seem to be remaining objects that could give position to these objects, nor do the BSPs or faces before/after them in the order give any clues.
-- There does not seem to be anything in the objects to link them to those BSPs. There is a "BlindObjectIndex" that has not been resolved yet, but it does not look like it applies to those types of objects.
-- I have checked manually if ANY objects/worldmodels would provide the correct position if the models were placed there, but none did. You can verify that e.g. for the Valkyrie tower sign (see above), which is centered in its mesh, there is NO "object" on the map at those coordinates.
-- It would be possible that coordinates are assigned dynamically, but any command (message) in other objects would need to reference the targets via an index, because they have no names, and such commands have not been found.
-- It seem unlikely that any other entities could provide position, like sectors or the streaming data section at the end of the .wld file.
-- Also most structures have been decoded, and even if there were others, it's not clear how they could link to the BSPs, as the BSP has no more fields that could provide a link themselves to other entities.
+- There don't seem to be remaining world entities that could give position to these geometries, nor do the BSPs or faces before/after them in the order yield any clues.
+- There does not seem to be anything else in any other world objects to link them to those BSPs. There is a "BlindObjectIndex" that has not been resolved yet, but it does not look like it helps here.
+- In the absence of other clues I have checked manually (using visual testing) if ANY objects/worldmodels would provide a sound position if the models were placed there, but none did for the above 3 examples. You can verify that e.g. for the Valkyrie tower sign (see above), which is centered in its mesh, there is **no** "object" on the map at those coordinates.
+- It would theoretically be possible that coordinates are assigned dynamically, e.g. via script, but any command (message) in other objects would need to reference the targets via an index, because the BSPs have no names, and such commands have not been found anywhere.
+- It seem unlikely (though not impossible) that another entity could provide a position, like sectors or the streaming data section at the end of the .wld file, since there seems to be no obvious link to the BSPs.
+- Finally, most structures in the world file have been decoded, and even if there were further ones, it's not clear how they could link to the BSPs, as the BSP has no more fields that could provide a link themselves (e.g. an index) to other entities.
 
 If you have any idea about the solution to this mystery, feel free to open an "issue" about it. :-)
